@@ -17,9 +17,27 @@
     <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js" integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo" crossorigin="anonymous"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js" integrity="sha384-wfSDF2E50Y2D1uUdj0O3uMBJnjuUD4Ih7YwaYd1iqfktj0Uod8GCExl3Og8ifwB6" crossorigin="anonymous"></script>
 
+    <script class="jsbin" src="https://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"></script>
+    <div class="file-upload">
+        <button class="file-upload-btn" type="button" onclick="$('.file-upload-input').trigger( 'click' )">Add Image</button>
+
+        <div class="image-upload-wrap">
+            <input class="file-upload-input" type='file' onchange="readURL(this);" accept="image/*" />
+            <div class="drag-text">
+                <h3>Drag and drop a file or select add Image</h3>
+            </div>
+        </div>
+        <div class="file-upload-content">
+            <img class="file-upload-image" src="#" alt="your image" />
+            <div class="image-title-wrap">
+                <button type="button" onclick="removeUpload()" class="remove-image">Remove
+                    <span class="image-title">Uploaded Image</span>
+                </button>
+            </div>
+        </div>
+    </div>
     <div class="button_wrap">
-        <button type="button" id="btn_get_image" class="btn btn-primary btn-lg m-1">이미지 불러오기</button>
-        <button type="button" id="btn_predict" class="btn btn-secondary btn-lg m-1">예측하기</button>
+        <button type="button" id="btn_predict" class="btn btn-primary btn-lg m-1">예측하기</button>
     </div>
 
     <div class="img_wrap">
@@ -27,24 +45,50 @@
         <img id="img_source" class="img" src="#">
     </div>
 
+    <div class="div_hidden">
+        <input type="hidden" id="uploaded_url" name="url" value="">
+    </div>
+
     <script>
-        $("#btn_get_image").click(function() {
-            draw();
-        });
+        $("img_source").hide()
+        $("cvs_ret").hide()
+               
         $("#btn_predict").click(function() {
             predict();
         });
 
+
         function draw() {
-            // Canvas 먼저 로드하고
+            var img_path = $('#uploaded_url').val();
+            
+            // Canvas 먼저 로드하고 크기조절
             var imgClo = new Image();
             imgClo.addEventListener('load', function() {
-                var ctx = document.getElementById('cvs_ret').getContext("2d");
-                ctx.drawImage(imgClo, 0, 0);
+                var myCanvas = document.getElementById('cvs_ret');
+                var ctx = myCanvas.getContext("2d");
+                ctx.clearRect(0, 0, myCanvas.width, myCanvas.height);
+                
+                var ratio = imgClo.width / imgClo.height;
+                console.log("ratio : ", ratio);
+                cvs_height = 500;
+                cvs_width = cvs_height * ratio;
+                
+                ctx.canvas.height = cvs_height;
+                ctx.canvas.width = cvs_width;
+                console.log("cvs : " , cvs_width, cvs_height);
+                                
+                ctx.drawImage(imgClo, 0, 0, cvs_width, cvs_height);
             }, false);
-            imgClo.src = "./images/man1.jpg";
-            // 이미지에도 로드시킴
-            $('#img_source').attr("src", "./images/man1.jpg");
+            imgClo.src = img_path;
+            
+            // 이미지에도 로드시키고 크기조절
+            $('#img_source').attr("src", img_path);
+            $('#img_source').load( function() {
+                console.log($('#cvs_ret').width(), $('#cvs_ret').height())
+                $('#img_source').width($('#cvs_ret').width());
+                $('#img_source').height($('#cvs_ret').height());
+            });
+            
             // visible 설정
             $('#cvs_ret').show();
             $('#img_source').hide();
@@ -53,18 +97,52 @@
         function predict() {
             var tracker = new tracking.ObjectTracker(['face', 'eye', 'mouth']);
             tracker.setStepSize(1.7);
-            tracking.track('#img_source', tracker); // 이상하게 캔버스는 답이 안나옴 ㅠ
+            console.log("tracking prev : ", $('#img_source').width(), $('#img_source').height());
             
             // 캔버스 위에 rect 그리기 위한 준비
             var ctx = $("#cvs_ret")[0].getContext('2d');
-            
             tracker.on('track', function(event) {
                 event.data.forEach(function(rect) {
                     console.log(rect.x, rect.y, rect.width, rect.height);
                     ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
                 });
             });
+            tracking.track('#cvs_ret', tracker); // 이상하게 캔버스는 답이 안나옴 ㅠ
         }
+    </script>
+
+    <script>
+        function readURL(input) {
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    $('.image-upload-wrap').hide();
+                    $('.file-upload-image').attr('src', e.target.result);
+                    //$('.file-upload-content').show();
+                    $('.image-title').html(input.files[0].name);
+                    
+                    // hidden value에 url 추가
+                    $('#uploaded_url').val(e.target.result);
+                    draw();
+                    
+                };
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                removeUpload();
+            }
+        }
+
+        function removeUpload() {
+            $('.file-upload-input').replaceWith($('.file-upload-input').clone());
+            $('.file-upload-content').hide();
+            $('.image-upload-wrap').show();
+        }
+        $('.image-upload-wrap').bind('dragover', function() {
+            $('.image-upload-wrap').addClass('image-dropping');
+        });
+        $('.image-upload-wrap').bind('dragleave', function() {
+            $('.image-upload-wrap').removeClass('image-dropping');
+        });
     </script>
 
 </body>
