@@ -1,0 +1,8 @@
+div.img_wrap{
+    position:relative;
+}
+div.img_wrap .img{
+    position:absolute;
+    left:0;
+    top:0;
+}
